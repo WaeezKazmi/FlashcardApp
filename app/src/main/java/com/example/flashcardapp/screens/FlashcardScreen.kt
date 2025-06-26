@@ -4,6 +4,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,41 +16,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
+import com.example.flashcardapp.data.FlashcardRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FlashcardScreen(navController: NavController) {
-    val flashcards = listOf(
-        Pair(
-            "Pythagorean theorem",
-            "In a right-angled triangle, the square of the hypotenuse is equal to the sum of the squares of the other two sides."
-        ),
-        Pair(
-            "Quadratic formula",
-            "The solution to ax² + bx + c = 0 is given by x = [-b ± sqrt(b²-4ac)] / 2a."
-        ),
-        Pair(
-            "Area of a circle",
-            "The area of a circle is π times the square of its radius."
-        )
-    )
-
+fun FlashcardScreen(navController: NavController, subject: String, repository: FlashcardRepository) {
+    val flashcards by repository.getFlashcardsBySubject(subject).collectAsState(initial = emptyList())
     var currentIndex by remember { mutableStateOf(0) }
     var isFront by remember { mutableStateOf(true) }
 
-    // Animate rotationY with visible duration
     val animatedRotationY by animateFloatAsState(
         targetValue = if (isFront) 0f else 180f,
-        animationSpec = tween(
-            durationMillis = 500,
-            easing = FastOutSlowInEasing
-        ),
+        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
         label = "FlipAnimation"
     )
+
+    if (flashcards.isEmpty()) {
+        navController.popBackStack()
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -92,17 +80,14 @@ fun FlashcardScreen(navController: NavController) {
                     val isBackVisible = animatedRotationY > 90f
 
                     if (isBackVisible) {
-                        // ✅ Fix mirrored back by rotating content 180°
                         Text(
-                            flashcards[currentIndex].second,
+                            flashcards[currentIndex].backText,
                             style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.graphicsLayer {
-                                rotationY = 180f
-                            }
+                            modifier = Modifier.graphicsLayer { rotationY = 180f }
                         )
                     } else {
                         Text(
-                            flashcards[currentIndex].first,
+                            flashcards[currentIndex].frontText,
                             style = MaterialTheme.typography.titleLarge
                         )
                     }
@@ -111,9 +96,7 @@ fun FlashcardScreen(navController: NavController) {
 
             Spacer(Modifier.height(16.dp))
 
-            Button(onClick = {
-                isFront = !isFront
-            }) {
+            Button(onClick = { isFront = !isFront }) {
                 Text("FLIP")
             }
 
@@ -128,7 +111,7 @@ fun FlashcardScreen(navController: NavController) {
                     onClick = {
                         if (currentIndex > 0) {
                             currentIndex--
-                            isFront = true // Reset to front
+                            isFront = true
                         }
                     }
                 ) {
@@ -146,7 +129,7 @@ fun FlashcardScreen(navController: NavController) {
                     onClick = {
                         if (currentIndex < flashcards.size - 1) {
                             currentIndex++
-                            isFront = true // Reset to front
+                            isFront = true
                         }
                     }
                 ) {

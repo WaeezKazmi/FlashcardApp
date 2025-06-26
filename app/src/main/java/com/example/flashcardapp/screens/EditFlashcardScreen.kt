@@ -9,21 +9,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.flashcardapp.data.Flashcard
+import com.example.flashcardapp.data.FlashcardRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditFlashcardScreen(
     navController: NavController,
-    initialSubject: String,
-    initialTopic: String,
-    initialDetails: String
+    repository: FlashcardRepository,
+    initialSubject: String = "",
+    initialTopic: String = "",
+    initialDetails: String = "",
+    flashcardId: Int = 0
 ) {
-    val existingSubjects = listOf("Mathematics", "Physics", "History")
-
+    val existingSubjects by repository.allSubjects.collectAsState(initial = emptyList())
     var subject by remember { mutableStateOf(initialSubject) }
     var topic by remember { mutableStateOf(initialTopic) }
     var details by remember { mutableStateOf(initialDetails) }
     var expanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val suggestions = existingSubjects.filter {
         it.contains(subject, ignoreCase = true) && subject.isNotEmpty()
@@ -32,13 +37,16 @@ fun EditFlashcardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Flashcard") },
+                title = { Text(if (flashcardId == 0) "Add Flashcard" else "Edit Flashcard") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1A2B63), titleContentColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1A2B63),
+                    titleContentColor = Color.White
+                )
             )
         }
     ) { padding ->
@@ -108,11 +116,46 @@ fun EditFlashcardScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { /* TODO */ }) { Text("DELETE") }
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (flashcardId != 0) {
+                    OutlinedButton(onClick = {
+                        scope.launch {
+                            repository.delete(Flashcard(flashcardId, subject, topic, topic, details))
+                            navController.popBackStack()
+                        }
+                    }) {
+                        Text("DELETE")
+                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+
                 Button(
-                    onClick = { /* TODO */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A2B63), contentColor = Color.White)
+                    onClick = {
+                        val flashcard = Flashcard(
+                            id = flashcardId,
+                            subject = subject,
+                            topic = topic,
+                            frontText = topic,
+                            backText = details
+                        )
+
+                        scope.launch {
+                            if (flashcardId == 0) {
+                                repository.insert(flashcard)
+                            } else {
+                                repository.update(flashcard)
+                            }
+                            navController.popBackStack()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1A2B63),
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("SAVE")
                 }
